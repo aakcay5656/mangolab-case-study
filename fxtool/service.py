@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from fxtool.errors import tool_error
 from fxtool.upstream import Upstream
@@ -51,3 +51,39 @@ async def dated_rate(
         )
 
     return DatedRate(rate=quote.rate, rate_date=quote.rate_date, asked_date=asked_date)
+
+
+# Money is rounded to cents at the very end, and half a cent rounds up. Python's
+# built-in round() would do neither: it rounds half to even, on a float.
+CENTS = Decimal("0.01")
+
+
+@dataclass(frozen=True)
+class Conversion:
+    amount: Decimal
+    base: str
+    target: str
+    rate: Decimal
+    result: Decimal
+    rate_date: date
+    asked_date: date
+
+
+async def convert(
+    upstream: Upstream, amount: Decimal, base: str, target: str, asked: date | None
+) -> Conversion:
+    dated = await dated_rate(upstream, base, target, asked)
+
+    # Decimal all the way through: the rate keeps every digit it was published
+    # with, and only the customer-facing total is rounded.
+    result = (amount * dated.rate).quantize(CENTS, rounding=ROUND_HALF_UP)
+
+    return Conversion(
+        amount=amount,
+        base=base,
+        target=target,
+        rate=dated.rate,
+        result=result,
+        rate_date=dated.rate_date,
+        asked_date=dated.asked_date,
+    )

@@ -98,3 +98,13 @@ def test_the_day_before_the_series_starts_is_refused():
 
 def test_the_first_day_of_the_series_is_allowed():
     assert parse_date(str(SERIES_START)) == SERIES_START
+
+
+def test_the_future_date_message_names_the_publisher_calendar():
+    # "Today" is Frankfurt's today. At 00:30 in Istanbul it is still yesterday
+    # there, and a caller asking about their own date should be told why.
+    with pytest.raises(ToolError) as excinfo:
+        parse_date(str(today() + timedelta(days=1)))
+
+    assert str(today()) in excinfo.value.message
+    assert "Frankfurt" in excinfo.value.message

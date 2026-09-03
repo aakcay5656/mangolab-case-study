@@ -93,9 +93,12 @@ def parse_date(raw: str | None) -> date | None:
         raise tool_error("invalid_date", f"'{raw}' is not a real date.") from None
 
     if asked > today():
+        # Named explicitly, because a caller in a timezone ahead of Frankfurt can
+        # be asking about their own today and deserves to know why it is refused.
         raise tool_error(
             "date_in_future",
-            f"{asked} is in the future; no rate has been published for it.",
+            f"{asked} is past the last day the ECB could have published: "
+            f"it is still {today()} in Frankfurt.",
         )
     if asked < SERIES_START:
         raise tool_error(

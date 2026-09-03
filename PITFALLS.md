@@ -69,7 +69,7 @@ anahtar kelime olduğu için "çözüm" gibi görünüyor.
 **Müşteriye maliyeti:** çağıran her istemci 422 alır. Servis çalışıyor ama kimse kullanamıyor.
 **Kural:** dış isim brief'teki isimdir; Python tarafındaki sorun `Query(alias="from")`
 ile çözülür, sözleşme değiştirilerek değil.
-**Yakalayan test:** `test_accepts_exact_query_contract_from_brief`
+**Yakalayan test:** `test_the_query_from_the_brief_answers_with_the_body_from_the_brief`
 
 ### H-07 — upstream host'unu koda gömmek
 **Belirti:** `UPSTREAM = "https://api.frankfurter.dev/v1"` sabiti.
@@ -86,13 +86,13 @@ hiçbir yerde. `grep -rn "frankfurter" fxtool/` tek bir satır göstermeli.
 **Müşteriye maliyeti:** 56.1718 → 56.17; 250 EUR'da ~45 kuruş, 1.000.000 EUR'da
 1.800 TL sapma. Cevap "doğru görünür".
 **Kural:** `rate` upstream'den geldiği gibi durur. Yalnızca `result` yuvarlanır.
-**Yakalayan test:** `test_rate_is_not_rounded`
+**Yakalayan test:** `test_the_rate_is_passed_through_at_full_precision`
 
 ### H-09 — para float ile
 **Belirti:** `amount * rate` float aritmetiği, `round()` banker yuvarlaması.
 **Müşteriye maliyeti:** kuruş sapmaları ve mutabakat tutmayan raporlar.
 **Kural:** `Decimal` + `ROUND_HALF_UP`, çıktıya çevrilirken tek noktada dönüşüm.
-**Yakalayan test:** `test_half_up_rounding`
+**Yakalayan test:** `test_half_a_cent_rounds_up_and_not_to_even`
 
 ### H-10 — `amount`'ı doğrulamamak
 **Belirti:** 0, negatif, `NaN`, `1e400` kabul edilir.
