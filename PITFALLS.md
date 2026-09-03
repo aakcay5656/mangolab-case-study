@@ -98,7 +98,7 @@ hiçbir yerde. `grep -rn "frankfurter" fxtool/` tek bir satır göstermeli.
 **Belirti:** 0, negatif, `NaN`, `1e400` kabul edilir.
 **Müşteriye maliyeti:** anlamsız veya `NaN` sonuç modele "sayı" diye gider.
 **Kural:** upstream'e gitmeden önce `amount > 0` ve sonlu olacak.
-**Yakalayan test:** `test_invalid_amounts` (parametrize)
+**Yakalayan test:** `test_amounts_that_cannot_mean_money_are_refused` (parametrize)
 
 ## Dayanıklılık
 
