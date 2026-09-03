@@ -12,6 +12,7 @@ from decimal import Decimal
 import httpx
 from fastapi import FastAPI, Query, Request
 
+from fxtool.cache import CachingUpstream
 from fxtool.errors import install_error_handlers
 from fxtool.service import Conversion, convert
 from fxtool.upstream import TIMEOUT, Upstream
@@ -24,7 +25,7 @@ SOURCE = "ECB via frankfurter.dev"
 async def lifespan(app: FastAPI):
     """One connection pool for the process, closed on the way out."""
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-        app.state.upstream = Upstream(client)
+        app.state.upstream = CachingUpstream(Upstream(client))
         yield
 
 

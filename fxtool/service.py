@@ -14,7 +14,7 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from fxtool.errors import tool_error
-from fxtool.upstream import Upstream
+from fxtool.upstream import RateSource
 from fxtool.validate import today
 
 
@@ -30,7 +30,7 @@ class DatedRate:
 
 
 async def dated_rate(
-    upstream: Upstream, base: str, target: str, asked: date | None
+    upstream: RateSource, base: str, target: str, asked: date | None
 ) -> DatedRate:
     """Fetch a rate and pin it to the day the upstream says it belongs to.
 
@@ -70,7 +70,7 @@ class Conversion:
 
 
 async def convert(
-    upstream: Upstream, amount: Decimal, base: str, target: str, asked: date | None
+    upstream: RateSource, amount: Decimal, base: str, target: str, asked: date | None
 ) -> Conversion:
     dated = await dated_rate(upstream, base, target, asked)
 

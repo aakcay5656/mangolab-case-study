@@ -28,7 +28,7 @@ sayı döner. Hiçbir yerde hata yok.
 yanlış kesilir ve kimse fark etmez.
 **Kural:** cache anahtarı `(from, to, tarih_parametresi)` üçlüsüdür. Tarihi
 anahtardan düşüren bir değişiklik asla merge edilmez.
-**Yakalayan test:** `test_cache_key_includes_date` — iki farklı tarih, iki upstream isteği.
+**Yakalayan test:** `test_a_different_date_is_a_different_question` — iki farklı tarih, iki upstream isteği.
 
 ### H-02 — `rate_date`'i biz hesaplamak
 **Belirti:** cevaptaki `rate_date` her zaman sorulan tarih; upstream başka bir

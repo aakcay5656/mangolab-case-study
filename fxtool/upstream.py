@@ -15,6 +15,7 @@ import os
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
+from typing import Protocol
 
 import httpx
 
@@ -47,6 +48,17 @@ def upstream_base() -> str:
         # "no rate for that date", which is the worst kind of misconfiguration.
         return base
     return f"{base}/{API_PREFIX}"
+
+
+class RateSource(Protocol):
+    """What the rest of the service needs: a rate, and the currencies that exist.
+
+    Named so the caching wrapper and the client it wraps are interchangeable.
+    """
+
+    async def fetch_quote(self, base: str, target: str, on: date | None) -> Quote: ...
+
+    async def known_currencies(self) -> set[str]: ...
 
 
 class Upstream:
