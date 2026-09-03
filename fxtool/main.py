@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from fxtool.errors import install_error_handlers
+
 app = FastAPI(title="fx-tool", version="1.0")
+install_error_handlers(app)
 
 
 @app.get("/health")
