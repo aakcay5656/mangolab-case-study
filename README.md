@@ -1,129 +1,120 @@
-# Case study — Junior Software Engineer at mangolab
+# fx-tool
 
-Two small tasks, **about two and a half hours in total.** Please do not spend
-your weekend on this. If you run out of time, stop and write down what you would
-have done next — that answer counts too.
+One endpoint an agent can call as a tool, over the ECB rates published at
+frankfurter.dev.
 
-Use Claude Code, Cursor, Copilot — whatever you normally use. That is how we work
-every day, and we would rather see you use it well than watch you avoid it. The
-only thing we ask is that you know your own code.
+The rule the whole thing is built around: **a wrong number is worse than no
+number.** A rate is never invented, and it is never presented as belonging to a
+day it does not belong to. When the ECB published nothing for the day asked, the
+answer carries both dates so the model can tell the customer which day the
+number is from.
 
-**Start by clicking "Use this template"** to create your own repository, then
-work there.
+## Run
 
----
-
-## Part A — build (about 90 minutes)
-
-A small HTTP service — Python + FastAPI preferred, TypeScript is fine — with one
-endpoint an AI agent could call as a tool:
-
-```
-GET /tools/convert?amount=250&from=EUR&to=TRY&date=2026-08-28
+```bash
+./run.sh
+curl "http://localhost:8080/tools/convert?amount=250&from=EUR&to=TRY&date=2026-08-28"
 ```
 
-It answers using the public [Frankfurter API](https://frankfurter.dev) —
-European Central Bank rates, no API key, no signup.
+| variable | default | |
+|---|---|---|
+| `PORT` | `8080` | |
+| `FX_UPSTREAM_BASE` | `https://api.frankfurter.dev` | host root; the service appends `/v1` (measured: `/v1/latest` answers, `/latest` is a 404). A base that already ends in `/v1` is not versioned twice. |
 
-### Three things are fixed, so that we can run every submission the same way
+The host appears in the code exactly once, as that default —
+`tests/test_no_hardcoded_host.py` fails the build if it appears anywhere else.
 
-| | |
-|---|---|
-| Upstream URL | from the `FX_UPSTREAM_BASE` environment variable, defaulting to `https://api.frankfurter.dev`. **Nothing may hardcode the real host** — we point this at a fake upstream when reviewing. |
-| Port | from the `PORT` environment variable, default `8080` |
-| Scripts | `./run.sh` starts the service, `./test.sh` runs the tests. Both are in this template, unimplemented. |
+## Test
 
-### The response
+```bash
+./test.sh
+```
 
-On success, 200 with:
+129 tests, no network: `tests/conftest.py` replaces the socket for the whole
+suite, so any connection off loopback fails the test that made it. `./test.sh`
+also defaults `FX_UPSTREAM_BASE` to a closed port, and
+`tests/test_no_upstream.py` opens a real socket to a dead local port to prove
+the endpoint answers 502 rather than a zero.
+
+## The response
 
 ```json
 {
-  "amount": 250,
-  "from": "EUR",
-  "to": "TRY",
-  "rate": 47.1234,
-  "result": 11780.85,
-  "rate_date": "2026-08-28",
-  "asked_date": "2026-08-28",
+  "amount": 250, "from": "EUR", "to": "TRY",
+  "rate": 47.1234, "result": 11780.85,
+  "rate_date": "2026-08-28", "asked_date": "2026-08-28",
   "source": "ECB via frankfurter.dev"
 }
 ```
 
-`rate_date` is **the date the rate you used actually belongs to.** `asked_date`
-is what the caller asked for. They are not always the same, and that difference
-is the point of this task.
+`rate_date` is the day the rate belongs to, read from the upstream's own `date`
+field. `asked_date` is the day the caller asked about. **When they differ, the
+rate is older than the question** — that is the visible signal, and it is the
+only fallback this service does.
 
-On failure, a non-2xx status and:
+Every failure, without exception:
 
 ```json
-{ "error": "<short_machine_code>", "message": "<a sentence a person could read>" }
+{ "error": "upstream_unavailable", "message": "The exchange-rate service could not be reached." }
 ```
 
-List your error codes in your README.
+## What it does in each case
 
-### The part that matters
+| situation | answer |
+|---|---|
+| weekend or holiday — nothing published that day | **200** with the last published rate, `rate_date` < `asked_date`. No cap on the gap: 28 Dec can answer with 24 Dec, and says so. |
+| `date` omitted | latest publication; `asked_date` is today, so a stale answer is still visible |
+| date in the future | **422** `date_in_future`, before any upstream call. "Today" is Frankfurt's today, and the message says so — at 00:30 in Istanbul it is still yesterday at the ECB. |
+| date before 1999-01-04 | **422** `date_before_series` (measured: 1999-01-04 answers, 1999-01-03 is a 404) |
+| currency code does not exist | **422** `unknown_currency`. The upstream returns the same bare 404 for "no such currency" and "no rate that day", so on a 404 we check its currency list and say which one it was. If that check itself fails we report the 404 we actually have, `no_rate_for_date`, rather than guess. |
+| `from` and `to` are the same | **400** `same_currency`. There is no rate to quote, and quoting 1.0 would need a `rate_date` we were never given. |
+| upstream slow | **504** `upstream_timeout` (2s connect, 4s read) |
+| upstream 5xx, or unreachable | **502** `upstream_unavailable` |
+| upstream returns HTML, a document of the wrong shape, no `date`, or a rate that is zero, negative or not a number | **502** `upstream_invalid_response` |
+| `amount` missing, `0`, negative, `NaN`, `Infinity`, not a number, or above 1e12 | **422** `invalid_amount`, before any upstream call |
+| `amount` with ten decimal places | **accepted.** It is parsed as a `Decimal` and used in full; only `result` is rounded, to two places, half up. Refusing a customer's real amount would be unhelpful and truncating it would be a lie about their money. |
+| lowercase `eur` | accepted, echoed back as `EUR` |
 
-The caller is a language model talking to a paying customer, so **a wrong number
-is worse than no number.** Decide — and implement — what happens when:
+## Error codes
 
-- the ECB published no rate for the date asked (weekends, holidays);
-- the date is in the future, or before the series starts;
-- the currency code does not exist, or `from` and `to` are the same;
-- the upstream is slow, returns 500, or returns something that is not JSON;
-- `amount` is missing, zero, negative, or has ten decimal places.
+| code | status | when |
+|---|---|---|
+| `invalid_amount` | 422 | the amount cannot mean money |
+| `invalid_currency` | 422 | not three letters |
+| `unknown_currency` | 422 | well-formed, but the ECB does not publish it |
+| `same_currency` | 400 | `from` equals `to` |
+| `invalid_date` | 422 | not a `YYYY-MM-DD` date |
+| `date_in_future` | 422 | after the last day the ECB could have published |
+| `date_before_series` | 422 | before 1999-01-04 |
+| `invalid_request` | 422 | a query parameter the framework could not read |
+| `no_rate_for_date` | 404 | the upstream has no rate for that day and pair |
+| `upstream_timeout` | 504 | the upstream did not answer in time |
+| `upstream_unavailable` | 502 | the upstream is unreachable or failing |
+| `upstream_invalid_response` | 502 | the upstream answered with something we will not stand behind |
+| `not_found` / `method_not_allowed` | 404 / 405 | wrong path or verb |
+| `internal_error` | 500 | our bug; logged in full, described in one flat sentence |
 
-Your endpoint must never invent a rate, and must never present a rate as
-belonging to a date it does not belong to. Note that the upstream itself tells
-you which date its rates are from — read it. If you choose to answer with an
-earlier published rate, the response has to make that visible, because the model
-has to be able to tell the customer which day the number is from.
+## Caching
 
-### Also required
+A repeat of the same question does not re-ask the upstream. The key is
+`(from, to, date)` — **the date is in the key**, because a cache that forgets it
+answers a question about March with August's rate and looks healthy doing it.
 
-- **Tests that pass with no network at all** — fake the upstream. We run
-  `./test.sh` with `FX_UPSTREAM_BASE` pointing at a closed port.
-- A README of your own we can follow in under a minute: how to run it, how to
-  run the tests, your error codes, and what your endpoint does in each of the
-  cases above.
-- A repeat of the same question should not re-ask the upstream.
-- `NOTES.md`, one page. The skeleton is in this repo.
+Settled past days are held for 6 hours; `latest` and *today* for 60 seconds,
+because nothing is published until the afternoon. Failures are never cached: a
+minute of upstream trouble must not become a minute of lying.
 
-### Not required, not scored
+## Layout
 
-Auth, a database, a UI, a Dockerfile, CI, deployment, more endpoints. Adding them
-will not help you; a smaller thing done carefully will.
+```
+fxtool/validate.py   what we refuse without asking anybody
+fxtool/upstream.py   the client; nothing off the wire is trusted
+fxtool/cache.py      TTL cache, keyed by pair and date
+fxtool/service.py    ties a rate to the day it belongs to, then does the arithmetic
+fxtool/errors.py     the error codes and the one envelope
+fxtool/main.py       the endpoint
+```
 
----
-
-## Part B — review (about 45 minutes)
-
-`tool.py` in this repository is a working version of the same service, written
-quickly with an AI assistant. It runs. **Review it as if it were going live
-tomorrow for a customer who pays us.**
-
-Fill in `REVIEW.md`, one page:
-
-- what is wrong, and what it does to a **customer** — not to a linter;
-- how you would verify each finding;
-- your findings **ranked**, and which single one you would fix before shipping
-  tonight.
-
-Fewer findings, ranked and explained, beat a long list. If something looks
-suspicious but is actually fine, saying so is worth as much as finding a real
-defect.
-
----
-
-## Submitting
-
-Reply to our email with a link to your repository. Commit in small steps — the
-history is part of what we read. Five days is plenty; if you need more, just say
-so.
-
-Any question about this brief, ask. An unclear requirement is our fault, not a
-test.
-
----
-
-<sub>mangolab — Mango Yazılım Teknolojileri Ltd. Şti. · [mangolab.ai/careers](https://mangolab.ai/careers)</sub>
+`PLAN.md` is how this was built, step by step. `PITFALLS.md` is the list of
+mistakes it is written to prevent, each one tied to the test that catches it.
+The original brief is the first commit.
