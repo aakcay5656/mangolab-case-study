@@ -53,7 +53,7 @@ durur. Görünmeyen fallback yok.
 müşteriye 0 TL denir. Yanlış sayı, sayı yokluğundan kötüdür.
 **Kural:** başarısızlık her zaman non-2xx + `{"error", "message"}`. `except
 Exception` sadece en dışta, ve orada da 500 üretir, 200 değil.
-**Yakalayan test:** `test_an_upstream_failure_is_never_a_number` (uçtan uca hâli Adım 7'de)
+**Yakalayan test:** `test_an_upstream_failure_is_never_a_number` ve uçtan uca `test_an_upstream_failure_returns_an_error_and_no_rate_at_all`
 
 ### H-05 — gelecekten kur
 **Belirti:** upstream sorulandan **sonraki** bir tarihin kurunu döndürür, biz kabul ederiz.
@@ -121,7 +121,7 @@ ve her biri kendi hata koduyla.
 **Müşteriye maliyeti:** dolaylı — yukarıdaki hataların hiçbiri yakalanamaz.
 **Kural:** varsayılan test yolu `MockTransport`; ayrıca kapalı porta bakan
 tek bir gerçek-soket testi 502'yi kanıtlar. `./test.sh` ağsız yeşil yanar.
-**Yakalayan test:** tüm suite + `test_closed_port_returns_502`
+**Yakalayan test:** `tests/conftest.py::no_network` (loopback dışı her soketi patlatır) + `test_a_closed_port_produces_an_error_not_a_zero`
 
 ### H-14 — `run.sh` prod gibi davranmamak
 **Belirti:** `--reload`, sabit port, `$PORT` yok sayılır.
