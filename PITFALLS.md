@@ -37,7 +37,7 @@ tarihin kurunu döndürmüş olsa bile.
 tam olarak bu.
 **Kural:** `rate_date` yalnızca upstream payload'ının `date` alanından okunur.
 `date.today()` veya sorulan tarih asla `rate_date` olamaz.
-**Yakalayan test:** `test_rate_date_comes_from_payload` — mock 28'i döner, biz 29'u sorduk, cevapta 28 yazar.
+**Yakalayan test:** `test_the_rate_and_its_date_both_come_from_the_payload` — mock 28'i döner, biz 29'u sorduk, cevapta 28 yazar.
 
 ### H-03 — sessiz `latest` fallback'i
 **Belirti:** geçmiş bir tarih için kur bulunamayınca sessizce bugünün kuruna düşmek.
@@ -53,7 +53,7 @@ durur. Görünmeyen fallback yok.
 müşteriye 0 TL denir. Yanlış sayı, sayı yokluğundan kötüdür.
 **Kural:** başarısızlık her zaman non-2xx + `{"error", "message"}`. `except
 Exception` sadece en dışta, ve orada da 500 üretir, 200 değil.
-**Yakalayan test:** `test_upstream_500_returns_502_not_a_number`
+**Yakalayan test:** `test_an_upstream_failure_is_never_a_number` (uçtan uca hâli Adım 7'de)
 
 ### H-05 — gelecekten kur
 **Belirti:** upstream sorulandan **sonraki** bir tarihin kurunu döndürür, biz kabul ederiz.
@@ -77,7 +77,7 @@ ile çözülür, sözleşme değiştirilerek değil.
 test ağa bağımlı hale gelir ve H-01..H-05 sınıfı hatalar test edilemez olur.
 **Kural:** gerçek host yalnızca `FX_UPSTREAM_BASE`'in default'unda geçer, başka
 hiçbir yerde. `grep -rn "frankfurter" fxtool/` tek bir satır göstermeli.
-**Yakalayan test:** `test_no_hardcoded_upstream_host` (kaynak dosyaları tarar)
+**Yakalayan test:** `test_the_real_host_appears_only_as_a_default` (kaynak dosyaları tarar)
 
 ## Para ve sayı
 
@@ -107,14 +107,14 @@ hiçbir yerde. `grep -rn "frankfurter" fxtool/` tek bir satır göstermeli.
 **Müşteriye maliyeti:** yavaş upstream tüm worker'ları tutar; servis çalışıyor
 görünürken hiçbir isteğe cevap vermez.
 **Kural:** connect ve read timeout'ları açıkça yazılır; timeout `504` üretir.
-**Yakalayan test:** `test_timeout_maps_to_504`
+**Yakalayan test:** `test_a_slow_upstream_times_out_instead_of_hanging`
 
 ### H-12 — `response.json()` körlemesine
 **Belirti:** upstream HTML hata sayfası döner, `json()` patlar veya sözlük beklenmedik şekilde gelir.
 **Müşteriye maliyeti:** 500 veya H-04'teki gibi sahte 0.
 **Kural:** durum kodu → JSON ayrıştırma → alan varlığı → tip kontrolü, bu sırayla
 ve her biri kendi hata koduyla.
-**Yakalayan test:** `test_non_json_upstream_maps_to_502`
+**Yakalayan test:** `test_html_instead_of_json_is_an_error_not_a_crash`
 
 ### H-13 — ağa muhtaç testler
 **Belirti:** testler yerelde geçer, kapalı portla çalıştırılınca patlar.
