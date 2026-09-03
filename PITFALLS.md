@@ -45,7 +45,7 @@ tam olarak bu.
 sessizce müşterinin cebinden çıkar.
 **Kural:** fallback varsa görünür olacak — `rate_date` ≠ `asked_date` cevapta
 durur. Görünmeyen fallback yok.
-**Yakalayan test:** `test_weekend_returns_previous_business_day_visibly`
+**Yakalayan test:** `test_a_weekend_is_answered_with_the_previous_business_day_and_both_dates_show`
 
 ### H-04 — istisnayı yutup 200 dönmek
 **Belirti:** upstream patlar, servis `rate: 0.0, result: 0.0` ile 200 döner.
@@ -59,7 +59,7 @@ Exception` sadece en dışta, ve orada da 500 üretir, 200 değil.
 **Belirti:** upstream sorulandan **sonraki** bir tarihin kurunu döndürür, biz kabul ederiz.
 **Müşteriye maliyeti:** o gün henüz var olmayan bir kur, geçmiş bir işleme uygulanır.
 **Kural:** `rate_date > asked_date` ise cevap vermeyiz, hata döneriz.
-**Yakalayan test:** `test_rate_from_future_is_rejected`
+**Yakalayan test:** `test_a_rate_from_after_the_day_asked_about_is_refused`
 
 ## Sözleşme hataları
 
